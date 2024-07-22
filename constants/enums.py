@@ -12,6 +12,11 @@ class FlavorType(BaseEnum):
     PRO = "PRO"
 
 
+class StatusType(BaseEnum):
+    SUCCESS = "success"
+    ERROR = "error"
+
+
 class SortKeyType(BaseEnum):
     ASC = "ASC"
     DESC = "DESC"

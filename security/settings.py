@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     redocs_url                   : str
     # admin_url                    : str
     DATABASE_URL                 : str
+    N_DATABASE_URL               : str
     # DATABASE_URL_COMMUNITY       : str
     
     # Mail 

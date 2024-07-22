@@ -13,7 +13,6 @@ from database import engine, SessionLocal
 
 
 def get_db_engine_connectable_with_schema(schema: Optional[str] = None):
-    print("inside th g et db ngin connectialb eshcma")
     """
     generates a session connectable, any of db, schema should be given
     """

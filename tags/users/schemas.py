@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Union, Dict
 import datetime
 
-from constants.enums import StatusType, TenantType, UserRoleType
+from constants.enums import StatusType
 
 
 class User(BaseModel):
@@ -61,20 +61,18 @@ class GetUsersResponseAPI(BaseModel):
     data: List[UserBasic]
 
 
-class SelectedPlanInfo(BaseModel):
-    type: str
-    type_alias: TenantType
+# class SelectedPlanInfo(BaseModel):
+#     type: str
+#     type_alias: TenantType
 
 
-class PlanInfo(BaseModel):
-    selected_plan: SelectedPlanInfo
+# class PlanInfo(BaseModel):
+#     selected_plan: SelectedPlanInfo
 
 
 class UserBase(UserBasic):
     created_at: datetime.datetime
     is_active: Union[bool, None]
-    user_role: UserRoleType
-    plan_info: PlanInfo
 
     class Config:
         orm_mode = True

@@ -1,0 +1,74 @@
+import os
+import json
+from sqlalchemy import MetaData, Table, create_engine
+from sqlalchemy.orm import sessionmaker
+
+metadata = MetaData()
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '{{ n_database_url }}')
+
+SCHEMA_NAME = "{{ schema_name }}"
+TABLE_NAME = "{{ table_name }}"
+
+
+def create_connection():
+    engine = create_engine(DATABASE_URL)
+    return engine.execution_options(schema_translate_map={"public": SCHEMA_NAME})
+
+
+def list_table(session, table):
+    output = session.query(table).all()
+    return [dict(row._mapping) for row in output]
+
+def create_item(session, table, event, context):
+    item_data = event.body
+    new_item = table.insert().values(**item_data)
+    session.execute(new_item)
+    session.commit()
+    return context.Response(body=json.dumps({"message": "Values inserted successfully!"}), status_code=201)
+
+def update_item(session, table, event, context):
+    item_data = event.body
+    item_id = item_data.pop('id', None)
+    if not item_id:
+        return context.Response(body=json.dumps({"error": "ID is required"}), status_code=400)
+    update_stmt = table.update().where(table.c.id == item_id).values(**item_data)
+    session.execute(update_stmt)
+    session.commit()
+    return context.Response(body=json.dumps({"message": "Item updated"}), status_code=200)
+
+def delete_item(session, table, event, context):
+    item_id = event.body.get('id')
+    if not item_id:
+        return context.Response(body=json.dumps({"error": "ID is required"}), status_code=400)
+    delete_stmt = table.delete().where(table.c.id == item_id)
+    session.execute(delete_stmt)
+    session.commit()
+    return context.Response(body=json.dumps({"message": "Item deleted"}), status_code=200)
+
+
+def handler(context, event):
+    method = event.method.decode('utf-8')
+    engine = context.user_data.db_connection
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    table = Table(TABLE_NAME, metadata, autoload_with=engine, schema=SCHEMA_NAME)
+    
+    if method=='GET':
+        users = list_table(session, table)
+        return context.Response(body=json.dumps(users), headers={"Content-Type": "application/json"}, status_code=200)
+    elif method=='POST':
+        return create_item(session, table, event,context)
+    elif method=='PUT':
+        return update_item(session, table, event,context)
+    elif method=='DELETE':
+        return delete_item(session, table, event,context)
+    else:
+        return context.Response(body=json.dumps({"error": event.method.decode('utf-8') + " Method not allowed"}), status_code=405)
+
+
+def init_context(context):
+    # Create the DB connection under "context.user_data"
+    engine = create_connection()
+    setattr(context.user_data, 'db_connection', engine)

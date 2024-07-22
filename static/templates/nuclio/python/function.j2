@@ -1,0 +1,10 @@
+meta:
+  name: {{ function_name }}
+  namespace: {{ namespace }}
+spec:
+  handler: {{ filename_without_extension }}:handler
+  runtime: python:3.8
+  triggers:
+    myHttpTrigger:
+      numWorkers: {{ numWorkers }}
+      kind: "http"

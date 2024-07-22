@@ -1,5 +1,5 @@
 from security.settings import settings
-from constants.enums import TenantType, FlavorType, CompetitionInvitationStatus, CompetitionWinningCriteriaType
+from constants.enums import FlavorType
 
 
 OFFSET_DEFAULT_VALUE = 0
@@ -37,37 +37,7 @@ ALLOWED_REQ_METHODS = ['OPTIONS']
 
 PRIVATE_COMPETITION_MINIMUM_NO_OF_PARTICIPANTS = 1
 PRIVATE_COMPETITION_MINIMUM_BET_POINTS = 1
-ALLOWED_COMPETITION_STATUSES_FOR_STATUS = {
-    CompetitionInvitationStatus.YET_TO_ACCEPT.value: [
-        CompetitionInvitationStatus.JOINED.value,
-        CompetitionInvitationStatus.ACCEPTED.value,
-        CompetitionInvitationStatus.REJECTED.value,
-        CompetitionInvitationStatus.CANCELLED.value,
-    ],
-    CompetitionInvitationStatus.JOINED.value: [],
-    CompetitionInvitationStatus.ACCEPTED.value: [],
-    CompetitionInvitationStatus.REJECTED.value: [],
-    CompetitionInvitationStatus.CANCELLED.value: [],
-}
 
-
-COMPETITION_WINNING_CRITERIA_WISE_DETAILS = {
-    CompetitionWinningCriteriaType.LESS_DATA_HIGH_COMPRESSION_RATE.value: {
-        "name": "Less data with high compression rate to reach performance",
-        "alias": CompetitionWinningCriteriaType.LESS_DATA_HIGH_COMPRESSION_RATE.value,
-        "is_performance_value_required": True
-    },
-    CompetitionWinningCriteriaType.BEST_MODEL.value: {
-        "name": "Best Model",
-        "alias": CompetitionWinningCriteriaType.BEST_MODEL.value,
-        "is_performance_value_required": False
-    },
-    CompetitionWinningCriteriaType.AVERAGE_OF_BOTH.value: {
-        "name": "An Average of Both",
-        "alias": CompetitionWinningCriteriaType.AVERAGE_OF_BOTH.value,
-        "is_performance_value_required": True
-    }
-}
 
 COMMUNITY_INITIAL_POINTS_USER = 100
 COMMUNITY_INITIAL_POINTS_ADMIN = 10000

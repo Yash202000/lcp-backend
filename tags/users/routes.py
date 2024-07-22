@@ -19,9 +19,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from database import SessionLocal, engine
 from db_connections import get_db_session_with_public_schema, get_public_schema_db, \
     get_db_session_with_schema, get_db_engine_connectable_with_schema, get_db
-from exceptions.exception_messages import TENANT_NOT_VERIFIED_BUT_USER_TRYING_TO_SIGNUP, \
+from exceptions.exception_messages import \
     SIGNED_UP_USER_TRYING_TO_SIGNUP_AGAIN, INVALID_USER_EMAIL_VERIFICATION, INVALID_EMAIL_EXCEPTION, \
-    VERIFIED_USER_TRYING_TO_SIGNUP_AGAIN, UNWANTED_BEHAVIOUR, INVALID_USER_EXCEPTION, EMAIL_SENDING_ERROR
+    VERIFIED_USER_TRYING_TO_SIGNUP_AGAIN, UNWANTED_BEHAVIOUR, EMAIL_SENDING_ERROR
 
 # --------------------------------  users imports ------------------------------
 from security.authentication import (
@@ -36,10 +36,10 @@ from models.public.public_models import  UserRole, User
 # from models.public_models import Tenant, BlacklistedEmailDomain
 from tags.users import schemas
 
-from constants.enums import SortKeyType, FlavorType, UserRoleType, StatusType
-from constants.plain_constants import MINIMUM_FIRST_NAME_LENGTH, MINIMUM_LAST_NAME_LENGTH, MINIMUM_PASSWORD_LENGTH, \
-    ALECTIO_COMMUNITY_SCHEMA, ALECTIO_COMMUNITY_TENANT, FLAVOR_WISE_EMAIL_DOMAIN_WISE_TENANT_TYPE_ALIAS
+from constants.enums import StatusType
 
+from constants.enums import SortKeyType, FlavorType
+from constants.plain_constants import MINIMUM_FIRST_NAME_LENGTH, MINIMUM_LAST_NAME_LENGTH, MINIMUM_PASSWORD_LENGTH
 # from data_seeding_scripts.tenant_models_scripts.load_default_data_in_tenant_tables import load_default_data_in_tenant_tables
 # from tags.users.common_methods import create_user_points
 from tags.users.schemas import FlavorBlacklistedDomains, UpdateNotification

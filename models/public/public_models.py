@@ -52,9 +52,42 @@ class Project(Base):
     in_progress = Column(Boolean, default=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     project_schema = Column(String(100), nullable=False)
+    tables = relationship("TableMetadata", back_populates="project")
 
     def __repr__(self):
         return f"{self.name} - {self.description}"
 
     def generate_schema_name(self):
         return f"project_{self.user_id}_{self.id}"
+    
+
+class TableMetadata(Base):
+    __tablename__ = "table_metadata"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    project = relationship("Project", back_populates="tables")
+    columns = relationship("ColumnMetadata", back_populates="table")
+
+
+
+class ColumnMetadata(Base):
+    __tablename__ = "column_metadata"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+    nullable = Column(Boolean, default=True)
+    primary_key = Column(Boolean, default=False)
+    table_id = Column(Integer, ForeignKey("table_metadata.id"), nullable=False)
+    table = relationship("TableMetadata", back_populates="columns")
+    foreign_key = relationship("ForeignKeyMetadata", uselist=False, back_populates="column")
+    
+    
+
+class ForeignKeyMetadata(Base):
+    __tablename__ = "foreign_key_metadata"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    column_id = Column(Integer, ForeignKey("column_metadata.id"), nullable=False)
+    referenced_table = Column(String, nullable=False)
+    referenced_column = Column(String, nullable=False)
+    column = relationship("ColumnMetadata", back_populates="foreign_key")

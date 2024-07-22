@@ -15,6 +15,7 @@ from security.settings import settings
 
 from tags.users.routes import user_router
 from tags.projects.routes import project_router
+from tags.metadata.routes import table_router
 
 
 
@@ -25,6 +26,7 @@ add_pagination(app)
 # including routers
 app.include_router(user_router)
 app.include_router(project_router)
+app.include_router(table_router)
 
 
 
@@ -48,47 +50,47 @@ app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 
 
-## custom headers for api endpoints
-def add_custom_headers():
+# ## custom headers for api endpoints
+# def add_custom_headers():
 
-    openapi_schema = get_openapi(
-        title="LCP",
-        description="LCP_V2 -- Community & Pro -- OpenAPI Spec (Swagger_UI)",
-        version="v2",
-        routes=app.routes,
-        terms_of_service="https://www.LCP.com/",
-        contact={
-            "name": "Visit LCP",
-            "url": "https://www.LCP.com/",
-            "email": "info@LCP.com",
-        },
-        license_info={
-            "name": "LCP License",
-            "url": "https://www.LCP.com/",
-        },
-    )
+#     openapi_schema = get_openapi(
+#         title="LCP",
+#         description="LCP_V2 -- Community & Pro -- OpenAPI Spec (Swagger_UI)",
+#         version="v2",
+#         routes=app.routes,
+#         terms_of_service="https://www.LCP.com/",
+#         contact={
+#             "name": "Visit LCP",
+#             "url": "https://www.LCP.com/",
+#             "email": "info@LCP.com",
+#         },
+#         license_info={
+#             "name": "LCP License",
+#             "url": "https://www.LCP.com/",
+#         },
+#     )
 
-    app.openapi_schema = openapi_schema
+#     app.openapi_schema = openapi_schema
 
-    # paths = openapi_schema["paths"]
-    # for url, methods in paths.items():
-    #     # if any(path in url.split("/") for path in ["signup", "login", "forgot_password", "verify"]):
-    #     #     for method in methods:
-    #     #         if methods[method].get("parameters"):
-    #     #             methods[method]["parameters"].insert(0, LCP_flavor_header)
-    #     #         else:
-    #     #             methods[method]["parameters"] = [LCP_flavor_header]
-    #     # else:
-    #     for method in methods:
-    #         if methods[method].get("parameters"):
-    #             # methods[method]["parameters"].insert(0, authentication_header)
-    #             methods[method]["parameters"].insert(0, LCP_flavor_header)
-    #         else:
-    #             methods[method]["parameters"] = [LCP_flavor_header]
+#     # paths = openapi_schema["paths"]
+#     # for url, methods in paths.items():
+#     #     # if any(path in url.split("/") for path in ["signup", "login", "forgot_password", "verify"]):
+#     #     #     for method in methods:
+#     #     #         if methods[method].get("parameters"):
+#     #     #             methods[method]["parameters"].insert(0, LCP_flavor_header)
+#     #     #         else:
+#     #     #             methods[method]["parameters"] = [LCP_flavor_header]
+#     #     # else:
+#     #     for method in methods:
+#     #         if methods[method].get("parameters"):
+#     #             # methods[method]["parameters"].insert(0, authentication_header)
+#     #             methods[method]["parameters"].insert(0, LCP_flavor_header)
+#     #         else:
+#     #             methods[method]["parameters"] = [LCP_flavor_header]
 
-    return app.openapi_schema
+#     return app.openapi_schema
 
 
-app.openapi = add_custom_headers
+
 
 

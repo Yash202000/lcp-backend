@@ -1,7 +1,7 @@
 from sqlalchemy.exc import SQLAlchemyError
 
 from exceptions.custom_exceptions import CustomException
-from exceptions.exception_messages import INVALID_DATABASE_QUERY_EXCEPTION, INVALID_DB_QUERY_EXCEPTION_FOR_USER
+from exceptions.exception_messages import INVALID_DATABASE_QUERY_EXCEPTION
 
 
 def raise_invalid_db_query_error(err: SQLAlchemyError):
