@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # admin_url                    : str
     DATABASE_URL                 : str
     N_DATABASE_URL               : str
+    N_URL                        : str
     # DATABASE_URL_COMMUNITY       : str
     
     # Mail 

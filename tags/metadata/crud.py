@@ -1,12 +1,9 @@
 from fastapi import HTTPException
-from sqlalchemy import Table, Column, Integer, String, Boolean, MetaData, ForeignKey
+from sqlalchemy import DateTime, Table, Column, Integer, String, Boolean, MetaData, ForeignKey,func
 from sqlalchemy.orm import Session
 from . import schemas
-from models.public.public_models import TableMetadata, ColumnMetadata, ForeignKeyMetadata , Project
-from security.settings import settings
-import jinja2
-import subprocess
-
+from models.public.public_models import API, APIGroup, TableMetadata, ColumnMetadata, ForeignKeyMetadata , Project
+from tags.n_helpers.crud import create_python_function
 
 
 def get_column_type(column_type: str):
@@ -23,12 +20,25 @@ def create_table_in_schema(db: Session, schema_name: str, table_schema: schemas.
     columns = []
 
     for col in table_schema.columns:
+        if col.name=='created_at':
+            continue
         column_type = get_column_type(col.type)
+        column_kwargs = {
+            'primary_key': col.primary_key,
+            'nullable': col.nullable,
+            'unique': col.unique,
+            'default': col.default,
+            'autoincrement': col.autoincrement
+        }
         if col.foreign_key:
             foreign_key = ForeignKey(f"{schema_name}.{col.foreign_key.referenced_table}.{col.foreign_key.referenced_column}")
-            columns.append(Column(col.name, column_type, foreign_key, primary_key=col.primary_key, nullable=col.nullable))
+            columns.append(Column(col.name, column_type, foreign_key, **column_kwargs))
         else:
-            columns.append(Column(col.name, column_type, primary_key=col.primary_key, nullable=col.nullable))
+            columns.append(Column(col.name, column_type, **column_kwargs))
+            
+    # Add the created_at column
+    created_at_column = Column('created_at', DateTime(timezone=True), server_default=func.now(), nullable=False)
+    columns.append(created_at_column)
 
     new_table = Table(table_schema.name, meta, *columns)
     meta.create_all(db.bind)
@@ -41,6 +51,11 @@ def create_project_table(db: Session, project_id: int, table_request: schemas.Cr
 
     # Create table in database
     schema_name = project.project_schema
+    table = db.query(TableMetadata).filter(TableMetadata.name==table_request.table.name,TableMetadata.project_id==project_id).first()
+    print(table)
+    if table:
+        raise HTTPException(status_code=404, detail="table already exist use update api to update table")
+    
     create_table_in_schema(db, schema_name, table_request.table)
 
     # Store metadata
@@ -70,111 +85,165 @@ def create_project_table(db: Session, project_id: int, table_request: schemas.Cr
             db.add(foreign_key_metadata)
 
     db.commit()
-    return table_metadata
-
-
-def execute_ssh_command(server, username, command):
-    """
-    Executes an SSH command on a remote server with password authentication.
-
-    Args:
-        server: The hostname or IP address of the remote server.
-        username: The username for SSH login.
-        password: The password for the username.
-        command: The command to execute on the remote server.
-
-    Returns:
-        A tuple containing the return code of the subprocess and the captured output (stdout).
-
-    Raises:
-        subprocess.CalledProcessError: If the command execution fails.
-    """
-
-    # Build the SSH command with password argument
-    ssh_command =  [
-        "ssh", f"{username}@{server}", "-o", "StrictHostKeyChecking=No", r"-i C:\Users\Admin\Documents\id_rsa  ", command
-    ]
-
+    
     try:
-        # Execute the SSH command with subprocess
-        result = subprocess.run(ssh_command, capture_output=True, text=True)
-        return result.returncode, result.stdout
-    except subprocess.CalledProcessError as e:
-        raise subprocess.CalledProcessError(f"SSH command failed: {e}") from e
+        n_response = create_python_function(schema_name=schema_name, table_name=table_request.table.name)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Server failed to create the function")
+    
+    
+    # make entry in the api group and then make entries in apis that this apis are created at the end create association
+    # Create APIGroup
+    api_group_name = f"{table_request.table.name}_group"
+    api_group = APIGroup(
+        name=api_group_name,
+        description=f"API group for table {table_request.table.name}",
+        project_id=project_id,
+    )
+    db.add(api_group)
+    db.commit()
+    db.refresh(api_group)
+
+    # Create APIs for GET, POST, PUT, DELETE methods
+    methods = ["GET", "POST", "PUT", "DELETE"]
+    base_url = n_response['status']['externalInvocationUrls'][0]
+    print(base_url)
+    for method in methods:
+        api = API(
+            name=f"{method.lower()}_{table_request.table.name}",
+            endpoint=f"{base_url}",
+            method=method,
+            description=f"{method} method for table {table_request.table.name}",
+            api_group_id=api_group.id,
+        )
+        db.add(api)
+        db.commit()
+        db.refresh(api)
+
+    # Associate APIGroup with the table
+    table_metadata.api_groups.append(api_group)
+    db.commit()
+    
+    
+    return n_response
+    
+    
+     
 
 
-def create_python_function():
-    
-    schema_name="project_2_test"
-    table_name="product"
-    
-    namespace = "nuclio"
-    filename_without_extension = "main"
-    numWorkers = 1
-    
-    # 
-    
-    template_dir = "static/templates/nuclio/python"
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir))
-    
-    
-    template = env.get_template("crud_template.py.j2")
-    rendered_function_content = template.render(
-        n_database_url=settings.N_DATABASE_URL,
-        schema_name=schema_name,
-        table_name=table_name,
-    )
-    
-    print(rendered_function_content)
-    
-    with open(f"test/main.py", "w") as f:
-        f.write(rendered_function_content)
-        f.close()
-        
-        
-    dtemplate = env.get_template("dockerbuildfile.j2")
-    rendered_dockerfile_content = dtemplate.render(    
-        database_url = settings.N_DATABASE_URL
-    )
-    
-    with open(f"test/Dockerfile", "w") as f:
-        f.write(rendered_dockerfile_content)
-        f.close()
-        
-    ftemplate = env.get_template("function.j2")
-    rendered_configuration_content = ftemplate.render(    
-        function_name = table_name,
-        namespace = namespace,
-        filename_without_extension = filename_without_extension,
-        numWorkers = numWorkers
-    )
-    
-    with open(f"test/function.yaml", "w") as f:
-        f.write(rendered_configuration_content)
-        f.close()
-        
-    rtemplate = env.get_template("requirements.j2")
-    rendered_requirements_content = rtemplate.render(
-        test=""
-    )
-    
-    with open(f"test/requirements.txt", "w") as f:
-        f.write(rendered_requirements_content)
-        f.close()
-        
-        
-    #
-    server = "192.168.0.103"
-    username = "ubuntu"
-    command = "touch test-blabla.txt"  # Replace with your desired command
 
-    try:
-        return_code, output = execute_ssh_command(server, username, command)
-        if return_code == 0:
-            print("Command succeeded:", output)
-        else:
-            print(f"Command failed with return code: {return_code}")
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
-            
-    return "success!"
+def get_table_with_columns_and_foreign_keys(db: Session, project_id: int, table_id: int):
+    
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    
+    table = db.query(TableMetadata).filter(TableMetadata.id == table_id).first()
+
+    if not table:
+        return None
+
+    columns = []
+    for column in table.columns:
+        foreign_key = None
+        if column.foreign_key:
+            foreign_key = {
+                "referenced_table": column.foreign_key.referenced_table,
+                "referenced_column": column.foreign_key.referenced_column
+            }
+        columns.append({
+            "id": column.id,
+            "name": column.name,
+            "type": column.type,
+            "nullable": column.nullable,
+            "primary_key": column.primary_key,
+            "foreign_key": foreign_key
+        })
+
+    return {
+        "table_id": table.id,
+        "table_name": table.name,
+        "columns": columns
+    }
+
+
+def get_all_project_tables(db: Session,project_id: int):
+    
+    return db.query(TableMetadata).filter(TableMetadata.project_id==project_id).all()
+
+
+def update_table_metadata(db: Session, table_metadata_id: int, table_metadata: schemas.TableMetadataCreate):
+    db_table_metadata = db.query(TableMetadata).filter(TableMetadata.id == table_metadata_id).first()
+    if not db_table_metadata:
+        raise HTTPException(status_code=404, detail="Table metadata not found")
+
+    for key, value in table_metadata.dict().items():
+        setattr(db_table_metadata, key, value)
+
+    db.commit()
+    db.refresh(db_table_metadata)
+    return db_table_metadata
+
+def delete_table_metadata(db: Session, table_metadata_id: int):
+    db_table_metadata = db.query(TableMetadata).filter(TableMetadata.id == table_metadata_id).first()
+    if not db_table_metadata:
+        raise HTTPException(status_code=404, detail="Table metadata not found")
+
+    db.delete(db_table_metadata)
+    db.commit()
+    return {"message": "Table metadata deleted successfully"}
+
+
+def create_column_metadata(db: Session, column_metadata: schemas.ColumnMetadataCreate):
+    db_column_metadata = ColumnMetadata(
+        name=column_metadata.name,
+        type=column_metadata.type,
+        nullable=column_metadata.nullable,
+        primary_key=column_metadata.primary_key,
+        table_id=column_metadata.table_id
+    )
+    db.add(db_column_metadata)
+    db.commit()
+    db.refresh(db_column_metadata)
+    return db_column_metadata
+
+
+
+def get_columns_metadata(db: Session, skip: int = 0, limit: int = 10):
+    return db.query(ColumnMetadata).offset(skip).limit(limit).all()
+
+def get_column_metadata_by_id(db: Session, column_metadata_id: int):
+    return db.query(ColumnMetadata).filter(ColumnMetadata.id == column_metadata_id).first()
+
+
+def update_column_metadata(db: Session, column_metadata_id: int, column_metadata: schemas.ColumnMetadataCreate):
+    db_column_metadata = db.query(ColumnMetadata).filter(ColumnMetadata.id == column_metadata_id).first()
+    if not db_column_metadata:
+        raise HTTPException(status_code=404, detail="Column metadata not found")
+
+    for key, value in column_metadata.dict().items():
+        setattr(db_column_metadata, key, value)
+
+    db.commit()
+    db.refresh(db_column_metadata)
+    return db_column_metadata
+
+
+def delete_column_metadata(db: Session, column_metadata_id: int):
+    db_column_metadata = db.query(ColumnMetadata).filter(ColumnMetadata.id == column_metadata_id).first()
+    if not db_column_metadata:
+        raise HTTPException(status_code=404, detail="Column metadata not found")
+
+    db.delete(db_column_metadata)
+    db.commit()
+    return {"message": "Column metadata deleted successfully"}
+
+
+
+
+
+
+    
